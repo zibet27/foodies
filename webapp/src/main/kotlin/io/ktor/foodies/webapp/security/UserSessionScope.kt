@@ -1,22 +1,12 @@
 package io.ktor.foodies.webapp.security
 
+import io.ktor.server.auth.openid.OidcPrincipal
 import io.ktor.server.routing.RoutingContext
-import kotlinx.serialization.Serializable
-import kotlin.time.Instant
 
-@Serializable
-data class UserSession(
-    val idToken: String,
-    val accessToken: String,
-    val expiresIn: Long,
-    val refreshToken: String,
-    val expiresAt: Instant,
-)
-
-fun interface UserSessionScope {
-    context(ctx: RoutingContext)
-    suspend fun userSession(): UserSession
-}
-
-context(scope: UserSessionScope)
-suspend fun RoutingContext.userSession(): UserSession = scope.userSession()
+//fun interface UserSessionScope {
+//    context(ctx: RoutingContext)
+//    suspend fun userSession(): OidcPrincipal.IdToken
+//}
+//
+//context(scope: UserSessionScope)
+//suspend fun RoutingContext.userSession(): OidcPrincipal.IdToken = scope.userSession()

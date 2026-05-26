@@ -63,6 +63,11 @@ spec:
                 configMapKeyRef:
                   name: webapp-config
                   key: AUTH_ISSUER
+            - name: AUTH_AUDIENCE
+              valueFrom:
+                configMapKeyRef:
+                  name: webapp-config
+                  key: AUTH_AUDIENCE
             - name: AUTH_CLIENT_ID
               valueFrom:
                 configMapKeyRef:
