@@ -11,7 +11,6 @@ import io.ktor.server.htmx.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import io.ktor.server.sessions.*
 import io.ktor.utils.io.*
 import kotlinx.coroutines.withContext
 import kotlinx.html.*
@@ -208,7 +207,9 @@ private fun HTML.cartPage(basket: CustomerBasket) {
             a(href = "/", classes = "logo") { +"Foodies" }
             div(classes = "actions") {
                 cartBadgeFlow(basket.items.sumOf { it.quantity })
-                a(href = "/logout", classes = "button secondary") { +"Log out" }
+                form(action = "/logout", method = FormMethod.post, classes = "logout-form") {
+                    button(type = ButtonType.submit, classes = "button secondary") { +"Log out" }
+                }
             }
         }
 

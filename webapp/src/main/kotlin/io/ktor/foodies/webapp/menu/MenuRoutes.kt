@@ -53,7 +53,9 @@ private fun TagConsumer<Appendable>.buildMenuFragment(
 
 private fun TagConsumer<Appendable>.menuCard(item: MenuItem, isLoggedIn: Boolean) {
     article(classes = "menu-card") {
-        img(src = item.imageUrl, alt = item.name)
+        img(src = item.imageUrl, alt = item.name) {
+            loading = ImgLoading.lazy
+        }
 
         div(classes = "content") {
             h3 { +item.name }

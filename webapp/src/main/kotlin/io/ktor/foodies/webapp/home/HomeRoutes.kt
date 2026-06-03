@@ -3,7 +3,6 @@ package io.ktor.foodies.webapp.home
 import io.ktor.foodies.webapp.basket.*
 import io.ktor.foodies.webapp.menu.*
 import io.ktor.http.*
-import io.ktor.server.auth.*
 import io.ktor.server.auth.openid.*
 import io.ktor.server.auth.typesafe.*
 import io.ktor.server.html.*
@@ -18,9 +17,11 @@ fun Route.homeRoutes(provider: OidcProvider<OidcPrincipal.IdToken>) {
 }
 
 @OptIn(ExperimentalKtorApi::class)
-fun Route.home(provider: OidcProvider<OidcPrincipal.IdToken>) = authenticateWith(provider.bearer.optional()) {
+fun Route.home(provider: OidcProvider<OidcPrincipal.IdToken>) = authenticateWith(provider.sessions.optional()) {
+    val ctx = authenticatedContext()
+
     get("/") {
-        val userOrNull = call.principal<OidcPrincipal.IdToken>()
+        val userOrNull = ctx.principal(this)
         val isLoggedIn = userOrNull != null
 
         call.respondHtml(HttpStatusCode.OK) {
@@ -32,17 +33,17 @@ fun Route.home(provider: OidcProvider<OidcPrincipal.IdToken>) = authenticateWith
                 title { +"Foodies - Discover the menu" }
                 link(rel = "stylesheet", href = "/static/home.css")
                 script(src = "https://unpkg.com/htmx.org@1.9.12") {}
-                script(src = "https://unpkg.com/htmx-ext-intersect@2.0.0/intersect.js") {}
             }
 
             body {
-                attributes["hx-ext"] = "intersect"
                 header {
                     a(href = "/", classes = "logo") { +"Foodies" }
                     div(classes = "actions") {
                         basketBadgeLink()
                         if (isLoggedIn) {
-                            a(href = "/logout", classes = "button secondary") { +"Log out" }
+                            form(action = "/logout", method = FormMethod.post, classes = "logout-form") {
+                                button(type = ButtonType.submit, classes = "button secondary") { +"Log out" }
+                            }
                         } else {
                             a(href = "/login", classes = "button primary") { +"Log in" }
                         }

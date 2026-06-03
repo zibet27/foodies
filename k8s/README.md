@@ -202,7 +202,15 @@ Then access at `http://localhost:8080`.
 127.0.0.1 foodies.local
 ```
 
-Or update the `FOODIES_HOST` value in [k8s/configmaps/foodies-config.yaml](fleet-file://mmglq7uf96d8i197ro8d/Users/simonvergauwen/Developer/foodies/k8s/configmaps/foodies-config.yaml?type=file&root=%252F) to match your environment.
+Pods must also resolve `foodies.local` to the in-cluster ingress controller so OIDC discovery works with the same canonical issuer used by browser redirects. Verify this from inside the cluster:
+
+```bash
+kubectl run -n foodies dns-check --rm -i --restart=Never --image=curlimages/curl -- curl -sS -o /dev/null -w "%{http_code} %{remote_ip}\n" http://foodies.local/auth/realms/foodies-keycloak/.well-known/openid-configuration
+```
+
+The expected result is HTTP `200` and a remote IP equal to the current `ingress-nginx-controller` ClusterIP.
+
+Or update the `FOODIES_HOST` value in the base Kustomize config to match your environment.
 
 ### 7. Monitoring and Tracing
 
