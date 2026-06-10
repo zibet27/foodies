@@ -16,8 +16,9 @@ fun Route.secure(
 
     install(createRouteScopedPlugin("SecureUserContext") {
         route!!.intercept(ApplicationCallPipeline.Call) {
-            val p = ctx.principal(call.toRoutingContext())
-            withContext(AuthContext(p.accessToken)) {
+            val user = ctx.principal(call)
+            val accessToken = user.accessToken.value
+            withContext(AuthContext(accessToken)) {
                 proceed()
             }
         }

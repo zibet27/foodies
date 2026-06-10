@@ -5,41 +5,27 @@ import io.ktor.foodies.webapp.*
 import io.ktor.http.*
 import io.ktor.http.HttpStatusCode.Companion.Unauthorized
 import io.ktor.server.application.*
-import io.ktor.server.auth.openid.*
+import io.ktor.server.auth.oidc.*
 import io.ktor.server.response.*
 import io.ktor.server.sessions.*
 import io.ktor.util.*
 import java.util.*
-import kotlin.time.Clock
-import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
-import kotlin.time.toKotlinInstant
 
-val KeycloakOidcProviderKey = AttributeKey<OidcProvider<OidcPrincipal.IdToken>>("KeycloakOidcProvider")
+val KeycloakOidcProviderKey = AttributeKey<OidcProvider<OidcToken.Id>>("KeycloakOidcProvider")
 
 suspend fun Application.security(
     config: Config.Security,
     httpClient: HttpClient,
     sessionStorage: SessionStorage
-): OidcProvider<OidcPrincipal.IdToken> {
+): OidcProvider<OidcToken.Id> {
     val oidc = openIdConnect {
         this.httpClient = httpClient
     }
 
-    lateinit var keycloak: OidcProvider<OidcPrincipal.IdToken>
-
-    keycloak = oidc.provider(
+    val keycloak: OidcProvider<OidcToken.Id> = oidc.provider(
         name = "keycloak",
-        transformPrincipal = transform@{ principal ->
-            val user = (principal as? OidcPrincipal.IdToken)?.takeIf {
-                it.accessToken != null && it.refreshToken != null
-            } ?: return@transform null
-            if (!user.shouldRefresh()) {
-                return@transform user
-            }
-            val result = keycloak.refreshToken(user.refreshToken!!)
-            result.principal
-        }
+        transformPrincipal = { it as? OidcToken.Id }
     ) {
         issuer = config.issuer
         accessToken {
@@ -49,17 +35,19 @@ suspend fun Application.security(
         oauth {
             clientId = config.clientId
             clientSecret = config.clientSecret
+
             config.stateEncryptionKey?.takeIf { it.isNotBlank() }?.let {
                 val key = Base64.getDecoder().decode(it)
                 stateEncryptionKey = OidcStateEncryptionKey.of(key)
             }
+
             scopes = listOf("openid", "profile", "email", "offline_access")
-            loginUri { path("login") }
-            redirectUri { path("oauth", "callback") }
-            postLogoutRedirectUri { path("/") }
-            onSuccess {
-                call.respondRedirect("/")
-            }
+            loginUri = { path("login") }
+            redirectUri = { path("oauth", "callback") }
+            postLogoutRedirectUri = { path("/") }
+
+            onSuccess { call.respondRedirect("/") }
+
             onFailure {
                 call.response.headers.append("HX-Redirect", "/login")
                 call.respond(Unauthorized)
@@ -68,6 +56,7 @@ suspend fun Application.security(
         sessions {
             storage = sessionStorage
             logoutUri = { path("logout") }
+            tokenRefreshStrategy = OidcTokenRefreshStrategy.Auto(beforeExpiry = 60.seconds)
             cookie {
                 cookie.secure = false
             }
@@ -76,10 +65,4 @@ suspend fun Application.security(
 
     attributes.put(KeycloakOidcProviderKey, keycloak)
     return keycloak
-}
-
-private fun OidcPrincipal.IdToken.shouldRefresh(buffer: Duration = 60.seconds): Boolean {
-    if (refreshToken == null) return false
-    val expiresAt = accessTokenClaims?.expiresAt ?: idTokenClaims.expiresAt ?: return false
-    return Clock.System.now() + buffer >= expiresAt.toKotlinInstant()
 }

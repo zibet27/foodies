@@ -20,7 +20,7 @@ dependencies {
 
     implementation(ktorLibs.server.netty)
     implementation(ktorLibs.server.auth)
-    implementation(ktorLibs.server.auth.openid)
+    implementation(ktorLibs.server.auth.oidc)
     implementation(ktorLibs.server.contentNegotiation)
     implementation(ktorLibs.server.config.yaml)
 

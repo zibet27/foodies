@@ -2,7 +2,7 @@ package io.ktor.foodies.webapp.menu
 
 import io.ktor.foodies.server.*
 import io.ktor.foodies.webapp.*
-import io.ktor.server.auth.openid.*
+import io.ktor.server.auth.oidc.*
 import io.ktor.server.auth.typesafe.*
 import io.ktor.server.htmx.*
 import io.ktor.server.routing.*
@@ -14,7 +14,7 @@ const val DefaultMenuPageSize = 12
 const val MenuIntersectTrigger = "intersect once rootMargin: 800px"
 
 @OptIn(ExperimentalKtorApi::class)
-fun Route.menuRoutes(menuService: MenuService, provider: OidcProvider<OidcPrincipal.IdToken>) {
+fun Route.menuRoutes(menuService: MenuService, provider: OidcProvider<OidcToken.Id>) {
     authenticateWith(provider.sessions.optional()) {
         val ctx = authenticatedContext()
 
@@ -23,7 +23,7 @@ fun Route.menuRoutes(menuService: MenuService, provider: OidcProvider<OidcPrinci
                 val offset: Int by call.parameters
                 val limit: Int by call.parameters
                 val items = menuService.menuItems(offset, limit)
-                val isLoggedIn = ctx.principal(this) != null
+                val isLoggedIn = with(ctx) { principal } != null
                 call.respondHtmxFragment { buildMenuFragment(items, offset, limit, isLoggedIn) }
             }
         }

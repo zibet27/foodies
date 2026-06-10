@@ -3,7 +3,7 @@ package io.ktor.foodies.webapp.home
 import io.ktor.foodies.webapp.basket.*
 import io.ktor.foodies.webapp.menu.*
 import io.ktor.http.*
-import io.ktor.server.auth.openid.*
+import io.ktor.server.auth.oidc.*
 import io.ktor.server.auth.typesafe.*
 import io.ktor.server.html.*
 import io.ktor.server.http.content.*
@@ -11,17 +11,17 @@ import io.ktor.server.routing.*
 import io.ktor.utils.io.ExperimentalKtorApi
 import kotlinx.html.*
 
-fun Route.homeRoutes(provider: OidcProvider<OidcPrincipal.IdToken>) {
+fun Route.homeRoutes(provider: OidcProvider<OidcToken.Id>) {
     staticResources("/static", "static")
     home(provider)
 }
 
 @OptIn(ExperimentalKtorApi::class)
-fun Route.home(provider: OidcProvider<OidcPrincipal.IdToken>) = authenticateWith(provider.sessions.optional()) {
+fun Route.home(provider: OidcProvider<OidcToken.Id>) = authenticateWith(provider.sessions.optional()) {
     val ctx = authenticatedContext()
 
     get("/") {
-        val userOrNull = ctx.principal(this)
+        val userOrNull = with(ctx) { principal }
         val isLoggedIn = userOrNull != null
 
         call.respondHtml(HttpStatusCode.OK) {

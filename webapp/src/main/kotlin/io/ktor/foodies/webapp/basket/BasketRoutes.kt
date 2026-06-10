@@ -4,7 +4,7 @@ import io.ktor.foodies.server.*
 import io.ktor.foodies.server.auth.*
 import io.ktor.foodies.webapp.*
 import io.ktor.http.*
-import io.ktor.server.auth.openid.*
+import io.ktor.server.auth.oidc.*
 import io.ktor.server.auth.typesafe.*
 import io.ktor.server.html.*
 import io.ktor.server.htmx.*
@@ -20,14 +20,14 @@ import java.math.RoundingMode
 @OptIn(ExperimentalKtorApi::class)
 fun Route.basketRoutes(
     basketService: BasketService,
-    provider: OidcProvider<OidcPrincipal.IdToken>
+    provider: OidcProvider<OidcToken.Id>
 ) {
     authenticateWith(provider.sessions.optional()) {
         val ctx = authenticatedContext()
 
         hx {
             get("/cart/badge") {
-                val session = ctx.principal(this)
+                val session = with(ctx) { principal }
                 val itemCount = if (session?.accessToken != null) {
                     val accessToken = requireNotNull(session.accessToken)
                     runCatching {
@@ -130,11 +130,12 @@ fun Route.basketRoutes(
     }
 }
 
+@OptIn(ExperimentalKtorApi::class)
 private suspend fun RoutingContext.withUserAccessToken(
-    ctx: AuthenticatedContext<OidcPrincipal.IdToken>,
+    ctx: AuthenticatedContext<OidcToken.Id>,
     block: suspend () -> Unit
 ) {
-    val token = ctx.principal(this).accessToken ?: return call.respond(HttpStatusCode.Unauthorized)
+    val token = with(ctx) { principal.accessToken }
     withContext(AuthContext(token)) { block() }
 }
 

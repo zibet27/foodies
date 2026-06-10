@@ -1,22 +1,23 @@
 package io.ktor.foodies.server.auth
 
-import io.ktor.server.auth.openid.OidcPrincipal
+import io.ktor.server.auth.oidc.OidcToken
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
 data class UserPrincipal(
     val userId: String,
     val email: String?,
     val roles: Set<String>,
-    val accessToken: String,
     val name: String? = null,
-    val oidcPrincipal: OidcPrincipal.AccessToken? = null,
+    val accessToken: OidcToken.Access,
 ) {
-    constructor(principal: OidcPrincipal.AccessToken) : this(
+    constructor(principal: OidcToken.Access) : this(
         userId = requireNotNull(principal.userInfo?.subject) { "subject claim is missing" },
         email = principal.userInfo?.email,
         roles = principal.realmRoles(),
-        accessToken = principal.accessToken,
         name = principal.userInfo?.name ?: principal.userInfo?.preferredUsername,
-        oidcPrincipal = principal,
+        accessToken = principal,
     )
 }
 
@@ -27,7 +28,8 @@ data class ServicePrincipal(
     val userContext: UserPrincipal? = null
 )
 
-private fun OidcPrincipal.AccessToken.realmRoles(): Set<String> {
-    val roles = accessTokenClaims.claim("realm_access").asMap()["roles"] as? List<*>
-    return roles?.filterIsInstance<String>()?.toSet() ?: emptySet()
+private fun OidcToken.Access.realmRoles(): Set<String> {
+    val accessJson = claims.claim("realm_access") ?: return emptySet()
+    val roles = accessJson.jsonObject["roles"]?.jsonArray ?: return emptySet()
+    return roles.map { it.jsonPrimitive.content }.toSet()
 }

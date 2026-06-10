@@ -2,7 +2,7 @@ package io.ktor.foodies.server.openid
 
 import io.ktor.foodies.server.auth.UserPrincipal
 import io.ktor.server.application.*
-import io.ktor.server.auth.openid.*
+import io.ktor.server.auth.oidc.*
 import io.ktor.server.auth.typesafe.*
 import io.ktor.util.*
 import io.ktor.utils.io.*
@@ -32,15 +32,13 @@ suspend fun Application.security(auth: Auth): RoleBasedAuthScheme<UserPrincipal,
     val keycloak = oidc.provider(
         name = "keycloak",
         transformPrincipal = transform@{
-            val accessToken = it as? OidcPrincipal.AccessToken ?: return@transform null
+            val accessToken = it as? OidcToken.Access ?: return@transform null
             if (accessToken.userInfo?.email == null) return@transform null
             UserPrincipal(accessToken)
         }
     ) {
         issuer = auth.issuer
-        accessToken {
-            audiences = setOf(auth.audience)
-        }
+        accessToken { audiences = setOf(auth.audience) }
         bearer()
     }
     val authScheme = keycloak.bearer.withRoles { it.realmRoles() }
@@ -49,11 +47,7 @@ suspend fun Application.security(auth: Auth): RoleBasedAuthScheme<UserPrincipal,
 }
 
 private fun UserPrincipal.realmRoles(): Set<UserRole> {
-    return roles
-        .mapNotNull { claim ->
-            UserRole.fromClaim(claim)
-        }
-        .toSet()
+    return roles.mapNotNull { UserRole.fromClaim(it) }.toSet()
 }
 
 @OptIn(ExperimentalKtorApi::class)
@@ -63,9 +57,3 @@ val AuthSchemeKey = AttributeKey<RoleBasedAuthScheme<UserPrincipal, UserRole>>("
 @OptIn(ExperimentalKtorApi::class)
 val Application.authScheme: RoleBasedAuthScheme<UserPrincipal, UserRole>
     get() = attributes[AuthSchemeKey]
-
-//private fun Payload.resourceRoles(audience: String): Set<String> {
-//    val resourceAccess = getClaim("resource_access")?.asMap()
-//    val roles = (resourceAccess?.get(audience) as? Map<*, *>)?.get("roles") as? List<*>
-//    return roles?.filterIsInstance<String>()?.toSet() ?: emptySet()
-//}

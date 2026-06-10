@@ -94,7 +94,7 @@ val securitySpec by testSuite {
         routing {
             secure {
                 get("/user") {
-                    call.respondText("Token length: ${principal.accessToken.length}")
+                    call.respondText("Token length: ${principal.accessToken.value.length}")
                 }
             }
         }

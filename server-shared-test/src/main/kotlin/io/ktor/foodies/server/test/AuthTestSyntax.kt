@@ -6,10 +6,10 @@ import de.infix.testBalloon.framework.shared.TestRegistering
 import io.ktor.foodies.server.auth.UserPrincipal
 import io.ktor.foodies.server.openid.AuthSchemeKey
 import io.ktor.foodies.server.openid.UserRole
-import io.ktor.server.auth.openid.OidcPrincipal
-import io.ktor.server.auth.openid.OpenIdProviderMetadata
-import io.ktor.server.auth.openid.OpenIdTestKeys
-import io.ktor.server.auth.openid.openIdConnect
+import io.ktor.server.auth.oidc.OidcToken
+import io.ktor.server.auth.oidc.OpenIdProviderMetadata
+import io.ktor.server.auth.oidc.OpenIdTestKeys
+import io.ktor.server.auth.oidc.openIdConnect
 import io.ktor.server.auth.typesafe.withRoles
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.utils.io.ExperimentalKtorApi
@@ -41,28 +41,13 @@ fun createUserToken(
     claim("realm_access", mapOf("roles" to roles))
 }
 
-fun createServiceToken(
-    config: JwtConfig = JwtConfig(),
-    serviceAccountId: String = "service-account-test-service",
-    clientId: String = "test-service",
-    roles: List<String> = listOf("service:read")
-): String = config.keys.accessToken(
-    issuer = config.issuer,
-    audience = config.audience,
-) {
-    subject = serviceAccountId
-    this.clientId = clientId
-    claim("azp", clientId)
-    claim("resource_access", mapOf(config.audience to mapOf("roles" to roles)))
-}
-
 @OptIn(ExperimentalKtorApi::class)
 fun ApplicationTestBuilder.installTestAuth(config: JwtConfig = JwtConfig()) = application {
         val oidc = openIdConnect {}
         val provider = oidc.provider(
             name = "test",
             transformPrincipal = transform@{
-                val accessToken = it as? OidcPrincipal.AccessToken ?: return@transform null
+                val accessToken = it as? OidcToken.Access ?: return@transform null
                 if (accessToken.userInfo?.email == null) return@transform null
                 UserPrincipal(accessToken)
             }
@@ -75,9 +60,7 @@ fun ApplicationTestBuilder.installTestAuth(config: JwtConfig = JwtConfig()) = ap
                 authorizationEndpoint = "${config.issuer}/authorize",
             )
             jwt(config.keys)
-            accessToken {
-                audiences = setOf(config.audience)
-            }
+            accessToken { audiences = setOf(config.audience) }
             bearer()
         }
         val authScheme = provider.bearer.withRoles { principal ->
