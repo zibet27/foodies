@@ -11,7 +11,7 @@ import kotlinx.html.*
 import java.math.RoundingMode
 
 const val DefaultMenuPageSize = 12
-const val MenuIntersectTrigger = "intersect once rootMargin: 800px"
+const val MenuIntersectTrigger = "intersect once"
 
 @OptIn(ExperimentalKtorApi::class)
 fun Route.menuRoutes(menuService: MenuService, provider: OidcProvider<OidcToken.Id>) {

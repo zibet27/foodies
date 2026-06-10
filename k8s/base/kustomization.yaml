@@ -22,7 +22,7 @@ resources:
 configMapGenerator:
   - name: foodies-config
     literals:
-      - FOODIES_HOST=foodies.local
+      - FOODIES_HOST=foodies.localhost
       - PROFILE_DB_NAME=foodies-profile-database
       - RABBITMQ_QUEUE=profile.registration
       - BASKET_RABBITMQ_QUEUE=basket.order-created
