@@ -3,13 +3,12 @@ package io.ktor.foodies.webapp.basket
 import io.ktor.foodies.server.*
 import io.ktor.foodies.server.auth.*
 import io.ktor.foodies.webapp.*
-import io.ktor.http.*
+import io.ktor.foodies.webapp.security.*
 import io.ktor.server.auth.oidc.*
 import io.ktor.server.auth.typesafe.*
 import io.ktor.server.html.*
 import io.ktor.server.htmx.*
 import io.ktor.server.request.*
-import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.utils.io.*
 import kotlinx.coroutines.withContext
@@ -43,100 +42,73 @@ fun Route.basketRoutes(
         }
     }
 
-    authenticateWith(
-        provider.sessions,
-        onUnauthorized = {
-            call.response.headers.append("HX-Redirect", "/login")
-            call.respond(HttpStatusCode.Unauthorized)
-        }
-    ) {
-        val ctx = authenticatedContext()
-
+    authenticatedSession(provider) {
         get("/cart") {
-            withUserAccessToken(ctx) {
-                val basket = basketService.getBasket()
-                call.respondHtml { cartPage(basket) }
-            }
+            val basket = basketService.getBasket()
+            call.respondHtml { cartPage(basket) }
         }
 
         hx {
             post("/cart/items") {
-                withUserAccessToken(ctx) {
-                    val form = call.receiveParameters()
-                    val menuItemId: Long by form
-                    val quantity: Int? by form
+                val form = call.receiveParameters()
+                val menuItemId: Long by form
+                val quantity: Int? by form
 
-                    val basket = basketService.addItem(menuItemId, quantity ?: 1)
-                    val itemCount = basket.items.sumOf { it.quantity }
+                val basket = basketService.addItem(menuItemId, quantity ?: 1)
+                val itemCount = basket.items.sumOf { it.quantity }
 
-                    call.respondHtmxFragment {
-                        cartBadgeOob(itemCount)
-                        addToCartSuccess()
-                    }
+                call.respondHtmxFragment {
+                    cartBadgeOob(itemCount)
+                    addToCartSuccess()
                 }
             }
 
             put("/cart/items/{itemId}") {
-                withUserAccessToken(ctx) {
-                    val itemId: String by call.parameters
-                    val quantity: Int by call.receiveParameters()
+                val itemId: String by call.parameters
+                val quantity: Int by call.receiveParameters()
 
-                    val basket = basketService.updateItemQuantity(itemId, quantity)
+                val basket = basketService.updateItemQuantity(itemId, quantity)
 
-                    call.respondHtmxFragment {
-                        cartItemsFragment(basket)
-                        cartSummaryOob(basket)
-                        cartBadgeOob(basket.items.sumOf { it.quantity })
-                    }
+                call.respondHtmxFragment {
+                    cartItemsFragment(basket)
+                    cartSummaryOob(basket)
+                    cartBadgeOob(basket.items.sumOf { it.quantity })
                 }
             }
 
             delete("/cart/items/{itemId}") {
-                withUserAccessToken(ctx) {
-                    val itemId: String by call.parameters
+                val itemId: String by call.parameters
 
-                    val basket = basketService.removeItem(itemId)
+                val basket = basketService.removeItem(itemId)
 
-                    call.respondHtmxFragment {
-                        cartItemsFragment(basket)
-                        cartSummaryOob(basket)
-                        cartBadgeOob(basket.items.sumOf { it.quantity })
-                    }
+                call.respondHtmxFragment {
+                    cartItemsFragment(basket)
+                    cartSummaryOob(basket)
+                    cartBadgeOob(basket.items.sumOf { it.quantity })
                 }
             }
 
             delete("/cart") {
-                withUserAccessToken(ctx) {
-                    basketService.clearBasket()
+                basketService.clearBasket()
 
-                    call.respondHtmxFragment {
-                        cartItemsFragment(
-                            CustomerBasket(
-                                buyerId = "",
-                                items = emptyList()
-                            )
+                call.respondHtmxFragment {
+                    cartItemsFragment(
+                        CustomerBasket(
+                            buyerId = "",
+                            items = emptyList()
                         )
-                        cartSummaryOob(
-                            CustomerBasket(
-                                buyerId = "",
-                                items = emptyList()
-                            )
+                    )
+                    cartSummaryOob(
+                        CustomerBasket(
+                            buyerId = "",
+                            items = emptyList()
                         )
-                        cartBadgeOob(0)
-                    }
+                    )
+                    cartBadgeOob(0)
                 }
             }
         }
     }
-}
-
-@OptIn(ExperimentalKtorApi::class)
-private suspend fun RoutingContext.withUserAccessToken(
-    ctx: AuthenticatedContext<OidcToken.Id>,
-    block: suspend () -> Unit
-) {
-    val token = with(ctx) { principal.accessToken }
-    withContext(AuthContext(token)) { block() }
 }
 
 private fun TagConsumer<*>.cartBadge(itemCount: Int) {

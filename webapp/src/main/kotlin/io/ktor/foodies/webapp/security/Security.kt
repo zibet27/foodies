@@ -12,8 +12,6 @@ import io.ktor.util.*
 import java.util.*
 import kotlin.time.Duration.Companion.seconds
 
-val KeycloakOidcProviderKey = AttributeKey<OidcProvider<OidcToken.Id>>("KeycloakOidcProvider")
-
 suspend fun Application.security(
     config: Config.Security,
     httpClient: HttpClient,
@@ -63,6 +61,5 @@ suspend fun Application.security(
         }
     }
 
-    attributes.put(KeycloakOidcProviderKey, keycloak)
     return keycloak
 }
